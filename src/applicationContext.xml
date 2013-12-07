@@ -1,0 +1,134 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xmlns:context="http://www.springframework.org/schema/context"
+    xmlns:aop="http://www.springframework.org/schema/aop"
+    xmlns:tx="http://www.springframework.org/schema/tx"
+    xsi:schemaLocation="
+	    http://www.springframework.org/schema/beans
+	    http://www.springframework.org/schema/beans/spring-beans.xsd
+	    http://www.springframework.org/schema/context
+	    http://www.springframework.org/schema/context/spring-context.xsd
+	    http://www.springframework.org/schema/tx 
+	    http://www.springframework.org/schema/tx/spring-tx.xsd 
+	    http://www.springframework.org/schema/aop 
+	    http://www.springframework.org/schema/aop/spring-aop.xsd">
+    
+    <!-- DataSource -->  
+    <bean id="dataSource"
+		class="com.mchange.v2.c3p0.ComboPooledDataSource"
+		destroy-method="close">
+		
+		<!-- Database connection settings -->
+		<property name="driverClass">
+			<value>com.mysql.jdbc.Driver</value>
+		</property>	
+		<property name="jdbcUrl">
+			<value>jdbc:mysql://localhost:3306/test?characterEncoding=utf-8</value>
+		</property>			
+		<property name="user">
+			<value>root</value>
+		</property>
+		<property name="password">
+			<value>654826249s</value>
+		</property>
+		
+		<!-- c3p0 Config -->
+		<property name="initialPoolSize" value="5" />
+		<property name="minPoolSize" value="1" />
+		<property name="maxPoolSize" value="80" />
+        <property name="acquireIncrement" value="5" />
+		<property name="acquireRetryAttempts" value="30" />
+		<property name="acquireRetryDelay" value="1000" /> 
+		<property name="idleConnectionTestPeriod" value="3000" />
+		<property name="checkoutTimeout" value="3000" />
+		<property name="maxStatements" value="6000" />
+	</bean>
+	
+    <!-- SessionFactory -->  
+    <bean id="sessionFactory"  
+        class="org.springframework.orm.hibernate4.LocalSessionFactoryBean">
+		<property name="dataSource">
+			<ref local="dataSource" />
+		</property>
+		
+		<!-- Hibernate properties -->
+		<property name="hibernateProperties">
+		    <props>
+				<prop key="hibernate.dialect">org.hibernate.dialect.MySQL5Dialect</prop>
+				<prop key="hibernate.show_sql">true</prop>
+				<prop key="hibernate.format_sql">true</prop>
+				<prop key="hibernate.current_session_context_class">thread</prop>
+				<prop key="hibernate.connection.release_mode">after_transaction</prop>
+				<prop key="hibernate.temp.use_jdbc_metadata_defaults">false</prop>
+				<prop key="hbm2ddl.auto">update</prop>
+				<prop key="cache.provider_class">org.hibernate.cache.internal.NoCacheProvider</prop>
+		    </props>
+		</property>
+		
+		<!-- Mapping Resources -->
+		<property name="mappingResources">
+			<list>
+				<value>User.hbm.xml</value>
+			</list>
+		</property>
+	</bean>
+  
+    <!-- TransactionManager -->  
+    <bean id="transactionManager"  
+        class="org.springframework.orm.hibernate4.HibernateTransactionManager">
+        <property name="sessionFactory">
+			<ref bean="sessionFactory"/>
+		</property>
+    </bean>
+  
+    <!-- Spring Advice -->  
+    <tx:advice id="txAdvice" transaction-manager="transactionManager">  
+        <tx:attributes>  
+            <!--hibernate4必须配置为开启事务 否则 getCurrentSession()获取不到-->  
+            <tx:method name="get*" propagation="REQUIRED" read-only="true" />
+            <tx:method name="count*" propagation="REQUIRED" read-only="true" />  
+            <tx:method name="find*" propagation="REQUIRED" read-only="true" />  
+            <tx:method name="list*" propagation="REQUIRED" read-only="true" />  
+            <tx:method name="*" read-only="true" />
+            <tx:method name="save*" propagation="REQUIRED" />  
+            <tx:method name="add*" propagation="REQUIRED" />  
+            <tx:method name="create*" propagation="REQUIRED" />  
+            <tx:method name="insert*" propagation="REQUIRED" />  
+            <tx:method name="update*" propagation="REQUIRED" />  
+            <tx:method name="merge*" propagation="REQUIRED" />  
+            <tx:method name="del*" propagation="REQUIRED" />  
+            <tx:method name="remove*" propagation="REQUIRED" />  
+            <tx:method name="put*" propagation="REQUIRED" />  
+            <tx:method name="use*" propagation="REQUIRED"/>
+        </tx:attributes>  
+    </tx:advice>  
+  
+    <!-- Spring Aop Config -->  
+    <aop:config>  
+        <aop:pointcut id="pointcut"  
+            expression="  
+                execution(* org.ssh2.service.impl.*Impl.*(..))" />  
+        <aop:advisor advice-ref="txAdvice" pointcut-ref="pointcut" />  
+    </aop:config>  
+    
+    <!-- DAO -->
+    <bean id="userDao" class="org.ssh2.dao.impl.UserDAOImpl">
+        <property name="sessionFactory">
+            <ref bean="sessionFactory"/>
+        </property>
+    </bean>
+    
+    <!-- Service -->
+    <bean id="userService" class="org.ssh2.service.impl.UserServiceImpl">
+        <property name="userDao">
+            <ref bean="userDao"/>
+        </property>
+    </bean>
+    
+    <!-- Action -->  
+    <bean id="testAction" scope="prototype" class="org.ssh2.action.TestAction">
+        <property name="uService" ref="userService"/>
+    </bean>
+     
+</beans>
